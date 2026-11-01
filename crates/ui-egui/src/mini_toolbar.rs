@@ -294,7 +294,13 @@ fn content(app: &mut WordApp, ui: &mut egui::Ui, t: &Tokens) {
         sep(ui, t);
 
         if app.services.send_to_chat.is_some() {
-            widgets::small(ui, app, "comment", None, "Add to chat", crate::widgets::ButtonAction::new("ui.sendToChat", json!({}), false));
+            // Branded host action: deliberately louder than the formatting buttons.
+            let send = egui::Button::new(egui::RichText::new("✦ MI").color(egui::Color32::WHITE).size(11.0).strong())
+                .fill(egui::Color32::from_rgb(0x1E, 0x9E, 0x6A))
+                .corner_radius(egui::CornerRadius::same(4));
+            if ui.add_sized([34.0, ROW_H], send).on_hover_text("Add to chat").clicked() {
+                let _ = app.run("ui.sendToChat", json!({}));
+            }
         }
         let hl = app.canvas.last_highlight.clone();
         let (icon, sw, color) = highlight_button_appearance(&hl);
