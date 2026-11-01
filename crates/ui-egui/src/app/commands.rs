@@ -506,6 +506,12 @@ impl WordApp {
                 crate::updates_ui::check(self);
                 Value::Null
             }
+            "ui.sendToChat" => {
+                if let Some(f) = &self.services.send_to_chat {
+                    f();
+                }
+                Value::Null
+            }
             "ui.tab" => {
                 let tab = s("tab").unwrap_or("Home").to_string();
                 if tab == "File" {

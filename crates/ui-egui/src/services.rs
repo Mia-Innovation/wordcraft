@@ -45,6 +45,9 @@ pub struct Services {
     /// Web: told whether the document has unsaved changes after each pass, for the browser's
     /// leave-page guard (`beforeunload` runs between frames and can't ask the app).
     pub on_dirty: Option<Box<dyn Fn(bool)>>,
+    /// Host page that collects the current selection for its own chat (`ui.sendToChat` and the
+    /// mini toolbar's chat button); `None` hides them.
+    pub send_to_chat: Option<Box<dyn Fn()>>,
     /// Web: hand PDF bytes to the browser's print dialog (no download or intermediate file).
     /// Desktop uses `print_native` instead. An error means nothing was opened.
     pub print: Option<Box<dyn Fn(&[u8]) -> Result<(), String>>>,

@@ -293,6 +293,9 @@ fn content(app: &mut WordApp, ui: &mut egui::Ui, t: &Tokens) {
         );
         sep(ui, t);
 
+        if app.services.send_to_chat.is_some() {
+            widgets::small(ui, app, "comment", None, "Add to chat", crate::widgets::ButtonAction::new("ui.sendToChat", json!({}), false));
+        }
         let hl = app.canvas.last_highlight.clone();
         let (icon, sw, color) = highlight_button_appearance(&hl);
         widgets::split(
