@@ -1,0 +1,81 @@
+# Mia-Innovation fork: builds the patched browser bundle and publishes it as a
+# release asset on our v*-mia.* tags, so white-label-agent's
+# fetch-wordcraft.sh downloads a real release instead of a local trunk build.
+#
+# Unlike release.yml (full desktop pipeline through craft-common-actions,
+# which needs signing secrets this fork doesn't have), this only packages
+# dist/web — the same zip layout as upstream's wordcraft-web-<version>.zip.
+name: MIA web bundle
+
+on:
+  push:
+    tags: ["v*-mia.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mia-web-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Pinned for reproducible bundles — bump deliberately.
+  RUST_VERSION: "1.99.1"
+  TRUNK_VERSION: "0.22.0"
+  CRAFT_FONTS_REF: "b076417b5880bd4154bd22f00695b1d28c6bea83" # same pin as release.yml
+
+jobs:
+  web-bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Rust toolchain (pinned)
+        run: |
+          rustup toolchain install "$RUST_VERSION" --profile minimal
+          rustup default "$RUST_VERSION"
+          rustup target add wasm32-unknown-unknown
+          rustc --version
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: trunk (pinned)
+        run: cargo install trunk --locked --version "$TRUNK_VERSION"
+
+      - name: craft-fonts (embedded in the web bundle)
+        uses: actions/checkout@v7
+        with:
+          repository: storytold/craft-fonts
+          ref: ${{ env.CRAFT_FONTS_REF }}
+          path: craft-fonts
+
+      - name: Build + package web bundle
+        env:
+          CRAFT_FONTS_DIR: ${{ github.workspace }}/craft-fonts
+        run: packaging/web/package.sh
+
+      - name: Verify the host bridge is in the wasm
+        run: |
+          grep -aq "__wcExec" dist/web/*.wasm
+          grep -aq "__wcSelection" dist/web/*.wasm
+          echo "bridge hooks present in $(ls dist/web/*.wasm)"
+
+      - name: Upload artifact (90-day fallback)
+        uses: actions/upload-artifact@v7
+        with:
+          name: wordcraft-web
+          path: dist/release/wordcraft-web-*.zip
+          retention-days: 90
+
+      - name: Publish release asset
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME" dist/release/wordcraft-web-*.zip
+          --title "WordCraft web (patched) $GITHUB_REF_NAME"
+          --notes "Patched web bundle for Mia-Innovation/white-label-agent: adds
+          the __wcExec/__wcSelection host bridge and the mini-toolbar
+          send-to-chat button. Same layout as upstream's wordcraft-web zip."
